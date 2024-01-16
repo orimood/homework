@@ -10,7 +10,8 @@ fi
 
 shift
 TRACK_ITEMS="$@"
-#echo "$TRACK_ITEMS"
+echo "$TRACK_ITEMS"
+
 
 PREV_FILE_ITEMS_PATH="${TRACK_PATH}/.track_files"
 PREV_FOLDER_ITEMS_PATH="${TRACK_PATH}/.track_folders"
@@ -48,7 +49,7 @@ CURRENT_FOLDER_ITEMS=($(ls -p "${TRACK_PATH}" | grep /))
 IFS=$SAVE_IFS
 
 if [ "$FIRST_RUN" = false ]; then
-  for prev_item in "${PREV_FOLDER_ITEMS[@]}"; do
+for prev_item in "${PREV_FOLDER_ITEMS[@]}"; do
     FOUND=false
     for curr_item in "${CURRENT_FOLDER_ITEMS[@]}"; do
       if [ "$prev_item" = "$curr_item" ]; then
@@ -56,12 +57,13 @@ if [ "$FIRST_RUN" = false ]; then
         break
       fi
     done
-    if [ "$FOUND" = 'false' ]; then
-      >&2 echo "Folder deleted: ${prev_item}"
+    # use printf and grep to check if prev_item is in TRACK_ITEMS
+    if [ "$FOUND" = 'false' ] && printf '%s\n' "$TRACK_ITEMS" | grep -qFx -- "$prev_item"; then
+      >&2 echo "Folder deleted: ${prev_item::-1}"
     fi
   done
 
-  for curr_item in "${CURRENT_FOLDER_ITEMS[@]}"; do
+for curr_item in "${CURRENT_FOLDER_ITEMS[@]}"; do
       FOUND=false
     for prev_item in "${PREV_FOLDER_ITEMS[@]}"; do
       if [ "$prev_item" = "$curr_item" ]; then
@@ -69,37 +71,41 @@ if [ "$FIRST_RUN" = false ]; then
         break
       fi
     done
-    if [ "$FOUND" = 'false' ]; then
-      >&2 echo "Folder created: ${curr_item}"
+    # use printf and grep to check if curr_item is in TRACK_ITEMS
+    if [ "$FOUND" = 'false' ] && printf '%s\n' "$TRACK_ITEMS" | grep -qFx -- "$curr_item"; then
+      >&2 echo "Folder created: ${curr_item::-1}"
     fi
   done
 
 
-  for prev_item in "${PREV_FILE_ITEMS[@]}"; do
-    FOUND=false
-    for curr_item in "${CURRENT_FILE_ITEMS[@]}"; do
-      if [ "$prev_item" = "$curr_item" ]; then
-        FOUND=true
-        break
-      fi
-    done
-    if [ "$FOUND" = 'false' ]; then
-      >&2 echo "File deleted: ${prev_item}"
-    fi
-  done
 
+for prev_item in "${PREV_FILE_ITEMS[@]}"; do
+  FOUND=false
   for curr_item in "${CURRENT_FILE_ITEMS[@]}"; do
-      FOUND=false
-    for prev_item in "${PREV_FILE_ITEMS[@]}"; do
-      if [ "$prev_item" = "$curr_item" ]; then
-        FOUND=true
-        break
-      fi
-    done
-    if [ "$FOUND" = 'false' ]; then
-      >&2 echo "File created: ${curr_item}"
+    if [ "$prev_item" = "$curr_item" ]; then
+      FOUND=true
+      break
     fi
   done
+  # use printf and grep to check if prev_item is in TRACK_ITEMS
+  if [ "$FOUND" = 'false' ] && printf '%s\n' "$TRACK_ITEMS" | grep -qFx -- "$prev_item"; then
+    >&2 echo "File deleted: ${prev_item}"
+  fi
+done
+
+for curr_item in "${CURRENT_FILE_ITEMS[@]}"; do
+  FOUND=false
+  for prev_item in "${PREV_FILE_ITEMS[@]}"; do
+    if [ "$prev_item" = "$curr_item" ]; then
+      FOUND=true
+      break
+    fi
+  done
+  # use printf and grep to check if curr_item is in TRACK_ITEMS
+  if [ "$FOUND" = 'false' ] && printf '%s\n' "$TRACK_ITEMS" | grep -qFx -- "$curr_item"; then
+    >&2 echo "File created: ${curr_item}"
+  fi
+done
 fi
 
 printf "%s\n" "${CURRENT_FOLDER_ITEMS[@]}" > "$PREV_FOLDER_ITEMS_PATH"
